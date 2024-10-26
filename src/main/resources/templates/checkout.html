@@ -2,25 +2,81 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Selection</title>
 </head>
 <body>
-<form action='/charge' method='POST' id='checkout-form'>
-    <input type='hidden' th:value='${amount}' name='amount' />
-    <label>Price:<span th:text='${amount/100}' /></label>
-    <br>
-    <script
-            src='https://checkout.stripe.com/checkout.js'
-            class='stripe-button'
-            th:attr='data-key=${stripePublicKey},
-         data-amount=${amount},
-         data-currency=${currency}'
-            data-name='Fyuizee'
-            data-description='Spring stripe checkout'
-            data-image='https://b.stripecdn.com/site-statics-srv/assets/assets/img/v3/home/social-9755e0835b1ab1538bddad515c24744b.png'
-            data-locale='auto'
-            data-zip-code='false'>
-    </script>
-</form>
+<h1>Select Products</h1>
+<div id="product-list">
+    <!-- Товары -->
+    <div class="product">
+        <label>
+            <input type="checkbox" class="product-checkbox" data-id="1" data-name="Product 1" data-price-id="price_1QDOTOGbM4jPYTVfDCN4MplL" data-price="10.00">
+            Product 1 - $10.00
+        </label>
+    </div>
+    <div class="product">
+        <label>
+            <input type="checkbox" class="product-checkbox" data-id="2" data-name="Product 2" data-price-id="price_1QDOTOGbM4jPYTVfDCN4MplL" data-price="15.00">
+            Product 2 - $15.00
+        </label>
+    </div>
+    <div class="product">
+        <label>
+            <input type="checkbox" class="product-checkbox" data-id="3" data-name="Product 3" data-price-id="price_1QDOTOGbM4jPYTVfDCN4MplL" data-price="20.00">
+            Product 3 - $20.00
+        </label>
+    </div>
+</div>
+
+<h2>Total Amount: $<span id="total-amount">0.00</span></h2>
+
+<button onclick="purchase()">Purchase</button>
+
+<script>
+    // Функция для обновления общей суммы
+    function updateTotalAmount() {
+        const checkboxes = document.querySelectorAll(".product-checkbox:checked");
+        const totalAmount = Array.from(checkboxes).reduce((total, checkbox) => {
+            return total + parseFloat(checkbox.dataset.price);
+        }, 0);
+
+        document.getElementById("total-amount").textContent = totalAmount.toFixed(2);
+    }
+
+    // Добавляем обработчики событий на чекбоксы
+    document.querySelectorAll(".product-checkbox").forEach(checkbox => {
+        checkbox.addEventListener("change", updateTotalAmount);
+    });
+
+    // Функция для отправки данных о покупке на сервер
+    async function purchase() {
+        const selectedProducts = Array.from(document.querySelectorAll(".product-checkbox:checked")).map(checkbox => ({
+            id: checkbox.dataset.id,
+            name: checkbox.dataset.name,
+            priceId: checkbox.dataset.priceId
+        }));
+
+        try {
+            const response = await fetch("http://localhost:8080/charge", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(selectedProducts) // Отправляем массив продуктов напрямую
+            });
+            console.log(selectedProducts);
+
+            if (response.ok) {
+                const sessionUrl = await response.text();
+                window.location.href = sessionUrl; // Redirect to Stripe Checkout
+            } else {
+                alert("Failed to initialize purchase.");
+            }
+        } catch (error) {
+            console.error("Error during purchase:", error);
+        }
+    }
+</script>
 </body>
 </html>
