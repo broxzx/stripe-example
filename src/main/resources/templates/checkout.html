@@ -11,19 +11,22 @@
     <!-- Товары -->
     <div class="product">
         <label>
-            <input type="checkbox" class="product-checkbox" data-id="1" data-name="Product 1" data-price-id="price_1QDOTOGbM4jPYTVfDCN4MplL" data-price="10.00">
+            <input type="checkbox" class="product-checkbox" data-id="1" data-name="Product 1"
+                   data-price-id="price_1QDOTOGbM4jPYTVfDCN4MplL" data-price="10.00" data-quantity="12">
             Product 1 - $10.00
         </label>
     </div>
     <div class="product">
         <label>
-            <input type="checkbox" class="product-checkbox" data-id="2" data-name="Product 2" data-price-id="price_1QDOTOGbM4jPYTVfDCN4MplL" data-price="15.00">
+            <input type="checkbox" class="product-checkbox" data-id="2" data-name="Product 2"
+                   data-price-id="price_1QDOTOGbM4jPYTVfDCN4MplL" data-price="15.00" data-quantity="12">
             Product 2 - $15.00
         </label>
     </div>
     <div class="product">
         <label>
-            <input type="checkbox" class="product-checkbox" data-id="3" data-name="Product 3" data-price-id="price_1QDOTOGbM4jPYTVfDCN4MplL" data-price="20.00">
+            <input type="checkbox" class="product-checkbox" data-id="3" data-name="Product 3"
+                   data-price-id="price_1QDOTOGbM4jPYTVfDCN4MplL" data-price="20.00" data-quantity="12">
             Product 3 - $20.00
         </label>
     </div>
@@ -34,7 +37,6 @@
 <button onclick="purchase()">Purchase</button>
 
 <script>
-    // Функция для обновления общей суммы
     function updateTotalAmount() {
         const checkboxes = document.querySelectorAll(".product-checkbox:checked");
         const totalAmount = Array.from(checkboxes).reduce((total, checkbox) => {
@@ -44,17 +46,16 @@
         document.getElementById("total-amount").textContent = totalAmount.toFixed(2);
     }
 
-    // Добавляем обработчики событий на чекбоксы
     document.querySelectorAll(".product-checkbox").forEach(checkbox => {
         checkbox.addEventListener("change", updateTotalAmount);
     });
 
-    // Функция для отправки данных о покупке на сервер
     async function purchase() {
         const selectedProducts = Array.from(document.querySelectorAll(".product-checkbox:checked")).map(checkbox => ({
             id: checkbox.dataset.id,
             name: checkbox.dataset.name,
-            priceId: checkbox.dataset.priceId
+            price: parseInt(checkbox.dataset.price),
+            quantity: parseInt(checkbox.dataset.quantity)
         }));
 
         try {
@@ -63,13 +64,13 @@
                 headers: {
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify(selectedProducts) // Отправляем массив продуктов напрямую
+                body: JSON.stringify(selectedProducts)
             });
             console.log(selectedProducts);
 
             if (response.ok) {
                 const sessionUrl = await response.text();
-                window.location.href = sessionUrl; // Redirect to Stripe Checkout
+                window.location.href = sessionUrl;
             } else {
                 alert("Failed to initialize purchase.");
             }

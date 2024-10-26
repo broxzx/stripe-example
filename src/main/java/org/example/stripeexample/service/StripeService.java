@@ -1,9 +1,7 @@
 package org.example.stripeexample.service;
 
 import com.stripe.Stripe;
-import com.stripe.exception.StripeException;
 import com.stripe.model.checkout.Session;
-import com.stripe.param.checkout.SessionCreateParams;
 import jakarta.annotation.PostConstruct;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -13,7 +11,9 @@ import org.example.stripeexample.repository.MockedDataRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @Slf4j
@@ -22,10 +22,7 @@ public class StripeService {
     @Value("${stripe.secretKey}")
     private String secretKey;
 
-    @Value("${stripe.priceId}")
-    private String priceId;
-
-    private MockedDataRepository repository = MockedDataRepository.getInstance();
+    private final MockedDataRepository repository = MockedDataRepository.getInstance();
 
     @PostConstruct
     void init() {
@@ -34,32 +31,32 @@ public class StripeService {
 
     @SneakyThrows
     public String chargeUserWithPayment(List<Product> products) {
-        List<SessionCreateParams.LineItem> lineItems = products.stream()
-                .map(product -> SessionCreateParams.LineItem.builder()
-                        .setPrice(product.getPriceId())  // Используем priceId для создания строки чекаута
-                        .setQuantity(1L)
-                        .build())
+        List<Map<String, Object>> bodyProductList = products.stream()
+                .map(product -> Map.of(
+                        "price_data", Map.of(
+                                "currency", "usd", // todo: create charge object to select which currency to use
+                                "product_data", Map.of("name", product.getName()),
+                                "unit_amount", product.getPrice() * 100
+                        ),
+                        "quantity", product.getQuantity()
+                ))
                 .toList();
 
-        SessionCreateParams params =
-                SessionCreateParams.builder()
-                        .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
-                        .setMode(SessionCreateParams.Mode.PAYMENT)
-                        .setSuccessUrl("http://localhost:8080/success?session_id={CHECKOUT_SESSION_ID}")
-//                        .setCancelUrl("http://localhost:8080/cancel?session_id={CHECKOUT_SESSION_ID}")
-                        .setCancelUrl("http://localhost:8080/cancel")
-                        .addAllLineItem(lineItems)
-                        .build();
+        Map<String, Object> params = new HashMap<>();
+        params.put("payment_method_types", List.of("card"));
+        params.put("line_items", bodyProductList);
+        params.put("mode", "payment");
+        params.put("success_url", "http://localhost:8080/success?session_id={CHECKOUT_SESSION_ID}");
+        params.put("cancel_url", "http://localhost:8080/cancel?session_id={CHECKOUT_SESSION_ID}");
 
-        Session session = null;
-        try {
-            session = Session.create(params);
-        } catch (StripeException e) {
-            throw new RuntimeException(e);
-        }
+        Session session = Session.create(params);
+        log.info(session.getUrl());
 
-        String sessionId = session.getId();
-        repository.addChargeRequest(new ChargeRequest(sessionId, products, ChargeRequest.Status.WAITING));
+        repository.addChargeRequest(ChargeRequest.builder()
+                .sessionId(session.getId())
+                .products(products)
+                .paymentStatus(ChargeRequest.Status.WAITING)
+                .build());
 
         return session.getUrl();
     }
